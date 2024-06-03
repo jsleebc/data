@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"></script>
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+
+
+    <script src="components/scatterplot.js"></script>
+    <script src="components/histogram.js"></script>
+    <script src="components/pc.js"></script>
+    <script src="components/datatable.js"></script>
+
+
+    <title>Token Data Analysis</title>
+    <style>
+        body {
+            background: #eee;
+            overflow-y: scroll;
+        }
+
+        .container {
+            width: 800px;
+            background: white;
+        }
+
+        .brushed {
+            stroke-width: 1;
+            stroke: gray;
+            r: 5;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <nav class="container navbar navbar-light bg-light">
+            <div class="container-fluid">
+                <span class="navbar-brand mb-0 h1">Token Data Analysis</span>
+            </div>
+        </nav>
+
+    </header>
+
+    <main class="container pb-3">
+        <div class="row pt-2">
+            <div class="col-1 text-end pe-2"><strong>X:</strong></div>
+            <div class="col-11">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="x-encoding" value="sell_tax" id="x-sell" checked>
+                    <label class="form-check-label" for="x-sell">Sell Tax</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="x-encoding" value="buy_tax" id="x-buy">
+                    <label class="form-check-label" for="x-buy">Buy Tax</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="x-encoding" value="dex_liquidity" id="x-dex">
+                    <label class="form-check-label" for="x-dex">DEX Liquidity</label>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-1 text-end pe-2"><strong>Y:</strong></div>
+            <div class="col-11">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="y-encoding" value="sell_tax" id="y-sell">
+                    <label class="form-check-label" for="y-sell">Sell Tax</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="y-encoding" value="buy_tax" id="y-buy" checked>
+                    <label class="form-check-label" for="y-buy">Buy Tax</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="y-encoding" value="dex_liquidity" id="y-dex">
+                    <label class="form-check-label" for="y-dex">DEX Liquidity</label>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col offset-1">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="os-encode" checked>
+                    <label class="form-check-label" for="os-encode">Color-encode Open Source</label>
+                </div>
+            </div>
+        </div>
+        <div class="text-center">
+            <svg width="400" height="400" id="scatterplot">
+            </svg>
+            <div class="tooltip bs-tooltip-top show" id="sc-tooltip" role="tooltip" style="display:none">
+                <div class="tooltip-arrow"></div>
+                <div class="tooltip-inner">
+                    Some tooltip text!
+                </div>
+            </div>
+
+            <svg width="400" height="400" id="histogram">
+            </svg>
+        </div>
+
+        <div class="text-center">
+            <svg id="pc">
+            </svg>
+        </div>
+
+        <table class="table table-striped text-center">
+            <thead>
+                <tr>
+                    <th>Token Name</th>
+                    <th>Is Open Source</th>
+                    <th>Is Honeypot</th>
+                    <th>Transfer Pausable</th>
+                    <th>Sell Tax</th>
+                    <th>Buy Tax</th>
+                    <th>DEX Liquidity</th>
+                </tr>
+            </thead>
+            <tbody id="data-table">
+
+            </tbody>
+        </table>
+
+    </main>
+
+    <script>
+        let data, brushedData, scatterplot, histogram, pc, dataTable;
+
+        function updateScatterplot() {
+            let xVar = d3.select("input[type=radio][name=x-encoding]:checked").property("value");
+            let yVar = d3.select("input[type=radio][name=y-encoding]:checked").property("value");
+            let osEncode = d3.select("#os-encode").property("checked");
+            scatterplot.update(xVar, yVar, "is_open_source", osEncode);
+        }
+
+        function updateHistogram() {
+            histogram.update(brushedData && brushedData.length > 0 ? brushedData : data, "is_open_source");
+        }
+
+        function updatePC() {
+            pc.update(brushedData && brushedData.length > 0 ? brushedData : data, "is_open_source");
+        }
+
+        function updateDataTable() {
+            dataTable.update(brushedData && brushedData.length > 0 ? brushedData : data, data.columns)
+        }
+
+        d3.csv("https://raw.githubusercontent.com/jsleebc/data/main/tokendata_1000.csv")
+            .then(csvData => {
+                csvData.forEach(d => {
+                    d["sell_tax"] = +d["sell_tax"] || 0;
+                    d["buy_tax"] = +d["buy_tax"] || 0;
+                    d["dex_liquidity"] = +d["dex_liquidity"];
+                    d["is_open_source"] = d["is_open_source"] === "1" ? "Open Source" : "Not Open Source";
+                    d["is_honeypot"] = d["is_honeypot"] === "1" ? "Honeypot" : "Not Honeypot";
+                    d["transfer_pausable"] = d["transfer_pausable"] === "1" ? "Pausable" : "Not Pausable";
+                });
+
+                data = csvData;
+
+                scatterplot = new Scatterplot("#scatterplot", "#sc-tooltip", data);
+                scatterplot.initialize();
+
+                updateScatterplot();
+                d3.selectAll("input[type=radio][name=x-encoding]").on("change", updateScatterplot);
+                d3.selectAll("input[type=radio][name=y-encoding]").on("change", updateScatterplot);
+                d3.selectAll("#os-encode").on("change", updateScatterplot);
+
+                scatterplot.on("brush", (brushedItems) => {
+                    brushedData = brushedItems;
+                    updateHistogram();
+                    updatePC();
+                    updateDataTable();
+                });
+
+                histogram = new Histogram("#histogram");
+                histogram.initialize();
+
+                updateHistogram();
+
+                pc = new PC("#pc", data, ["sell_tax", "buy_tax", "dex_liquidity"]);
+                pc.initialize();
+
+                updatePC();
+
+                dataTable = new DataTable("#data-table");
+
+                updateDataTable();
+            })
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>

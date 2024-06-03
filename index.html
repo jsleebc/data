@@ -88,7 +88,23 @@
             <div class="col offset-1">
                 <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" role="switch" id="os-encode" checked>
-                    <label class="form-check-label" for="os-encode">Color-encode Open Source</label>
+                    <label class="form-check-label" for="os-encode">Open Source</label>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col offset-1">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="tp-encode" checked>
+                    <label class="form-check-label" for="tp-encode">Transfer Pausable</label>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col offset-1">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="hp-encode" checked>
+                    <label class="form-check-label" for="hp-encode">Is Honeypot</label>
                 </div>
             </div>
         </div>
@@ -137,7 +153,9 @@
             let xVar = d3.select("input[type=radio][name=x-encoding]:checked").property("value");
             let yVar = d3.select("input[type=radio][name=y-encoding]:checked").property("value");
             let osEncode = d3.select("#os-encode").property("checked");
-            scatterplot.update(xVar, yVar, "is_open_source", osEncode);
+            let tpEncode = d3.select("#tp-encode").property("checked");
+            let hpEncode = d3.select("#hp-encode").property("checked");
+            scatterplot.update(xVar, yVar, osEncode, tpEncode, hpEncode);
         }
 
         function updateHistogram() {
@@ -172,6 +190,8 @@
                 d3.selectAll("input[type=radio][name=x-encoding]").on("change", updateScatterplot);
                 d3.selectAll("input[type=radio][name=y-encoding]").on("change", updateScatterplot);
                 d3.selectAll("#os-encode").on("change", updateScatterplot);
+                d3.selectAll("#tp-encode").on("change", updateScatterplot);
+                d3.selectAll("#hp-encode").on("change", updateScatterplot);
 
                 scatterplot.on("brush", (brushedItems) => {
                     brushedData = brushedItems;
